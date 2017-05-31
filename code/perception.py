@@ -166,11 +166,6 @@ def perception_step(Rover):
         # Rover.nav_dists = rover_centric_pixel_distances
         # Rover.nav_angles = rover_centric_angles
 
-    dists, angles = to_polar_coords(xpix, ypix)
-    avg_angle = np.mean(angles) # Compute the average angle
-    avg_angle_degrees = avg_angle * 180/np.pi
-    steering = np.clip(avg_angle_degrees, -15, 15)
-    Rover.nav_dists = dists
-    Rover.nav_angles = steering
-    
+    Rover.nav_dists, Rover.nav_angles = to_polar_coords(xpix, ypix)
+
     return Rover
