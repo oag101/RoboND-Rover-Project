@@ -63,29 +63,42 @@ def update_rover(Rover, data):
       # Return updated Rover and separate image for optional saving
       return Rover, image
 
+def create_scaled_map(map_image):
+    # Create a scaled map for plotting and clean up obs/nav pixels a bit
+    if np.max(map_image[:,:,2]) > 0:
+          nav_pix = map_image[:,:,2] > 0
+          navigable = map_image[:,:,2] * (255 / np.mean(map_image[nav_pix, 2]))
+    else:
+          navigable = map_image[:,:,2]
+    if np.max(map_image[:,:,0]) > 0:
+          obs_pix = map_image[:,:,0] > 0
+          obstacle = map_image[:,:,0] * (255 / np.mean(map_image[obs_pix, 0]))
+    else:
+          obstacle = map_image[:,:,0]
+
+    likely_nav = navigable >= obstacle
+    obstacle[likely_nav] = 0
+
+    plotmap = np.zeros_like(map_image)
+    plotmap[:, :, 0] = obstacle
+    plotmap[:, :, 2] = navigable
+    plotmap = plotmap.clip(0, 255)
+
+    return plotmap
+
 # Define a function to create display output given worldmap results
 def create_output_images(Rover):
 
       # Create a scaled map for plotting and clean up obs/nav pixels a bit
-      if np.max(Rover.worldmap[:,:,2]) > 0:
-            nav_pix = Rover.worldmap[:,:,2] > 0
-            navigable = Rover.worldmap[:,:,2] * (255 / np.mean(Rover.worldmap[nav_pix, 2]))
-      else:
-            navigable = Rover.worldmap[:,:,2]
-      if np.max(Rover.worldmap[:,:,0]) > 0:
-            obs_pix = Rover.worldmap[:,:,0] > 0
-            obstacle = Rover.worldmap[:,:,0] * (255 / np.mean(Rover.worldmap[obs_pix, 0]))
-      else:
-            obstacle = Rover.worldmap[:,:,0]
+      plotmap = create_scaled_map(Rover.worldmap)
 
-      likely_nav = navigable >= obstacle
-      obstacle[likely_nav] = 0
-      plotmap = np.zeros_like(Rover.worldmap)
-      plotmap[:, :, 0] = obstacle
-      plotmap[:, :, 2] = navigable
-      plotmap = plotmap.clip(0, 255)
       # Overlay obstacle and navigable terrain map with ground truth map
       map_add = cv2.addWeighted(plotmap, 1, Rover.ground_truth, 0.5, 0)
+
+
+      # Create a scaled map for plotting and clean up obs/nav pixels a bit
+      plotmap_vision_image = create_scaled_map(Rover.vision_image)
+
 
       # Check whether any rock detections are present in worldmap
       rock_world_pos = Rover.worldmap[:,:,1].nonzero()
@@ -140,7 +153,7 @@ def create_output_images(Rover):
       pil_img.save(buff, format="JPEG")
       encoded_string1 = base64.b64encode(buff.getvalue()).decode("utf-8")
 
-      pil_img = Image.fromarray(Rover.vision_image.astype(np.uint8))
+      pil_img = Image.fromarray(plotmap_vision_image.astype(np.uint8))
       buff = BytesIO()
       pil_img.save(buff, format="JPEG")
       encoded_string2 = base64.b64encode(buff.getvalue()).decode("utf-8")
